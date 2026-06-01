@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Trip Tracker</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background-color: #f8f9fa; color: #333; }
+        h2 { color: #2c3e50; }
+        .controls { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; display: flex; gap: 15px; align-items: center; }
+        input[type="date"] { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        button { padding: 10px 20px; background-color: #3498db; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; transition: background 0.2s; }
+        button:hover { background-color: #2980b9; }
+        .loading { display: none; font-weight: bold; color: #e67e22; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #edf2f7; }
+        th { background-color: #2c3e50; color: white; font-weight: 600; }
+        tr:hover { background-color: #f1f5f9; }
+        .no-data { text-align: center; padding: 30px; color: #7f8c8d; font-style: italic; }
+        .timestamp { font-family: monospace; font-size: 14px; color: #2c3e50; }
+    </style>
+</head>
+<body>
+
+    <h2>Device Trip Management Console</h2>
+    
+    <div class="controls">
+        <label for="tripDate">Select Date:</label>
+        <input type="date" id="tripDate" value="2026-05-27">
+        <button onclick="fetchTripData()">Get Trip Data</button>
+        <span id="loadingText" class="loading">Fetching and processing data... Please wait...</span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Device ID</th>
+                <th>Trip ID</th>
+                <th>VAL OUT (Exit 12616/23)</th>
+                <th>TML IN (First Entry 12617)</th>
+                <th>TML OUT (Last Exit 12617)</th>
+                <th>VAL IN (Enter 12616/23)</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <tr>
+                <td colspan="6" class="no-data">Select a date and click "Get Trip Data" to populate rows.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script>
+        // Helper function to safely parse UTC API strings and output readable IST format
+        function convertToIST(utcString) {
+            if (!utcString) return '-';
+            
+            try {
+                const dateObj = new Date(utcString);
+                
+                // Enforce 'Asia/Kolkata' timezone explicitly and structure a clean output format
+                return dateObj.toLocaleString('en-IN', {
+                    timeZone: 'Asia/Kolkata',
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                });
+            } catch (e) {
+                console.error("Failed to parse date string:", utcString, e);
+                return utcString; // Fallback to raw string if processing breaks
+            }
+        }
+
+        async function fetchTripData() {
+            const dateInput = document.getElementById('tripDate').value;
+            const tableBody = document.getElementById('tableBody');
+            const loadingText = document.getElementById('loadingText');
+
+            if (!dateInput) {
+                alert("Please pick a valid date first.");
+                return;
+            }
+
+            loadingText.style.display = "inline";
+            tableBody.innerHTML = "";
+
+            try {
+                const response = await fetch(`/api/processed-trips?date=${dateInput}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Server returned HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                loadingText.style.display = "none";
+
+                if (Object.keys(data).length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="6" class="no-data">No completed trips found for this date.</td></tr>`;
+                    return;
+                }
+
+                let rowsHtml = "";
+                for (const [deviceId, trips] of Object.entries(data)) {
+                    for (const [tripId, details] of Object.entries(trips)) {
+                        rowsHtml += `
+                            <tr>
+                                <td><strong>${deviceId}</strong></td>
+                                <td>${tripId.replace('_', ' ')}</td>
+                                <td class="timestamp">${convertToIST(details.valout)}</td>
+                                <td class="timestamp">${convertToIST(details.tmlin)}</td>
+                                <td class="timestamp">${convertToIST(details.tmlout)}</td>
+                                <td class="timestamp">${convertToIST(details.valin)}</td>
+                            </tr>
+                        `;
+                    }
+                }
+                tableBody.innerHTML = rowsHtml;
+
+            } catch (error) {
+                loadingText.style.display = "none";
+                alert("Failed to retrieve trip telemetry data.");
+                tableBody.innerHTML = `<tr><td colspan="6" class="no-data" style="color: red;">Error: ${error.message}</td></tr>`;
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
