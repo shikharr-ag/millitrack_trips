@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("TripServer")
 
 app = FastAPI(title="Millitrack Web Dashboard")
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="./")
 
 BASE_URL = "http://track.millitrack.com/api"
 USERNAME = "VALSJR"
