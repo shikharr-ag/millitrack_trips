@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("TripServer")
 
 app = FastAPI(title="Millitrack Web Dashboard")
-templates = Jinja2Templates(directory="./")
+# templates = Jinja2Templates(directory="./")
 
 BASE_URL = "http://track.millitrack.com/api"
 USERNAME = "VALSJR"
@@ -66,13 +66,17 @@ def process_trips(events_list):
 
 
 # ROUTE 1: Serves the Web Dashboard Interface
-@app.get("/", response_class=HTMLResponse)
-def serve_dashboard(request: Request):
-    return templates.TemplateResponse(name="index.html",request= {"request": request})
+# @app.get("/", response_class=HTMLResponse)
+# def serve_dashboard(request: Request):
+#     return templates.TemplateResponse(name="index.html",request= {"request": request})
 
+# This will now be your homepage route (e.g., your-domain.com/)
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to the Python API"}
 
 # ROUTE 2: Dynamic JSON Endpoint that fetches from Millitrack, filters, and processes data
-@app.get("/api/processed-trips")
+@app.get("/processed-trips")
 async def get_processed_trips_api(date: str = Query(..., description="Date format YYYY-MM-DD")):
     auth = httpx.AsyncClient(auth=httpx.BasicAuth(USERNAME, PASSWORD))
     
